@@ -22,6 +22,7 @@ using Uno.UI.Samples.Tests;
 
 #if HAS_UNO
 using Uno.Foundation.Logging;
+using MUXControlsTestApp;
 #else
 using Microsoft.Extensions.Logging;
 using Uno.Logging;
@@ -673,7 +674,8 @@ namespace SampleControl.Presentation
 					Description = attribute.Description,
 					ControlType = type.AsType(),
 					IgnoreInSnapshotTests = attribute.IgnoreInSnapshotTests,
-					IsManualTest = attribute.IsManualTest
+					IsManualTest = attribute.IsManualTest,
+					UsesFrame = attribute.UsesFrame
 				};
 		}
 
@@ -842,15 +844,33 @@ description: {sample.Description}";
 		{
 			SampleChanging?.Invoke(this, EventArgs.Empty);
 
-			//Activator is used here in order to generate the view and bind it directly with the proper view model
-			var control = Activator.CreateInstance(newContent.ControlType);
+			FrameworkElement container = null;
 
-			if (control is ContentControl controlAsContentControl && !(controlAsContentControl.Content is Uno.UI.Samples.Controls.SampleControl))
-			{
-				control = new Uno.UI.Samples.Controls.SampleControl
-				{
-					Content = control,
-					SampleDescription = newContent.Description
+            			var frameRequested =
+            				newContent.UsesFrame &&
+            				typeof(Page).IsAssignableFrom(newContent.ControlType);
+            			if (frameRequested)
+            			{
+            				var frame = new Frame();
+            				frame.Navigate(newContent.ControlType);
+            				container = frame;
+            			}
+            			else
+            			{
+            				//Activator is used here in order to generate the view and bind it directly with the proper view model
+            				var control = Activator.CreateInstance(newContent.ControlType);
+
+            				if (control is ContentControl controlAsContentControl && !(controlAsContentControl.Content is Uno.UI.Samples.Controls.SampleControl))
+            				{
+            					control = new Uno.UI.Samples.Controls.SampleControl
+            					{
+            						Content = control,
+            						SampleDescription = newContent.Description
+            					};
+            				}
+
+            				container = new Border { Child = control as UIElement };
+            			}
 				};
 			}
 
@@ -1057,7 +1077,7 @@ description: {sample.Description}";
 					{
 						json = File.ReadAllText(filePath);
 					}
-					
+
 				}
 				catch (IOException e)
 				{
